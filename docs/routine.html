@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1c1c20">
+<link rel="icon" href="./icon.svg">
+<title>주간 루틴</title>
+<style>
+  :root{
+    --bg:#1c1c20; --bar:#26262c; --card:#2a2a31; --line:#35353d;
+    --txt:#e4e4ea; --dim:#96969f; --faint:#6a6a74;
+    --math:#e5484d; --kor:#f78c32; --sci:#ffc53d; --eng:#5abe6e;
+    --proj:#a78bfa; --life:#7c8fa8; --org:#6fb3c9; --sleep:#8f8f9a; --etc:#8f8f9a;
+    --now:#5abe6e; --late:#ff5a5a; --today:#ffaa3c;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--txt);
+    font-family:'Pretendard','Malgun Gothic','Apple SD Gothic Neo',system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased}
+  body{padding:0 0 56px;max-width:900px;margin:0 auto}
+
+  header{position:sticky;top:0;z-index:10;background:var(--bar);
+    padding:16px 20px 0;border-bottom:1px solid var(--line);
+    padding-top:calc(16px + env(safe-area-inset-top))}
+  .datewrap{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+  .date{font-size:26px;font-weight:800;letter-spacing:-.5px}
+  .dow{font-size:19px;font-weight:700;color:var(--kor)}
+  .clock{margin-left:auto;font-size:21px;font-weight:700;color:var(--dim);
+    font-variant-numeric:tabular-nums}
+  .meta{margin-top:7px;font-size:12.5px;color:var(--dim);display:flex;gap:13px;flex-wrap:wrap}
+
+  .tabs{display:flex;gap:6px;margin-top:13px;padding-bottom:11px;overflow-x:auto;
+    scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{flex:1 0 auto;min-width:42px;text-align:center;padding:8px 0;border-radius:10px;
+    background:var(--card);color:var(--dim);font-size:14.5px;font-weight:700;
+    cursor:pointer;user-select:none;border:1px solid transparent;position:relative}
+  .tab.sel{background:#33333c;color:var(--txt);border-color:var(--faint)}
+  .tab.td{color:var(--today)}
+  .tab.td::after{content:'';position:absolute;bottom:4px;left:50%;transform:translateX(-50%);
+    width:4px;height:4px;border-radius:50%;background:var(--today)}
+
+  section{padding:0 20px}
+  h2{font-size:14px;font-weight:700;color:var(--dim);margin:22px 0 10px;
+    display:flex;align-items:center;gap:8px}
+  h2 .count{font-size:12.5px;color:var(--faint);font-weight:600}
+
+  /* 현재 블록 */
+  .hero{background:#243026;border:1px solid #35513a;border-radius:16px;
+    padding:16px 17px;margin-top:18px}
+  .hero.off{background:var(--card);border-color:var(--line)}
+  .hero .lbl{font-size:12px;font-weight:700;color:var(--now);letter-spacing:.3px}
+  .hero.off .lbl{color:var(--faint)}
+  .hero .ttl{font-size:21px;font-weight:800;margin-top:6px;line-height:1.3}
+  .hero .sub{font-size:14px;color:var(--dim);margin-top:5px;line-height:1.45}
+  .hero .bar{height:6px;border-radius:99px;background:#1c1c20;margin-top:13px;overflow:hidden}
+  .hero .fill{height:100%;background:var(--now);border-radius:99px;transition:width .4s}
+  .hero .rem{font-size:12.5px;color:var(--dim);margin-top:7px;
+    display:flex;justify-content:space-between;font-variant-numeric:tabular-nums}
+
+  /* 타임라인 */
+  .row{display:flex;gap:12px;align-items:stretch;position:relative}
+  .rail{flex:0 0 62px;text-align:right;padding-top:14px;font-size:12.5px;font-weight:700;
+    color:var(--faint);font-variant-numeric:tabular-nums;line-height:1.45}
+  .blk{flex:1;background:var(--card);border-radius:13px;padding:12px 14px;margin-bottom:8px;
+    border-left:4px solid var(--etc);cursor:pointer;user-select:none;transition:opacity .15s}
+  .blk .bt{font-size:15.5px;font-weight:700;line-height:1.3;display:flex;
+    align-items:center;gap:8px}
+  .blk .bd{font-size:13.5px;color:var(--dim);margin-top:4px;line-height:1.45}
+  .blk .bs{font-size:12px;color:var(--faint);margin-top:6px}
+  .blk.now{background:#243026;box-shadow:inset 0 0 0 1px #35513a}
+  .blk.past{opacity:.38}
+  .blk.on{opacity:.35}
+  .blk.on .bt{text-decoration:line-through}
+  .chip{font-size:11px;font-weight:700;padding:3px 8px;border-radius:99px;
+    background:var(--now);color:#12200f;white-space:nowrap;margin-left:auto}
+  .chip.gray{background:#3b3b45;color:var(--dim)}
+  .mark{width:19px;height:19px;border-radius:6px;border:2px solid var(--faint);
+    flex:0 0 auto;display:grid;place-items:center;font-size:12px;color:transparent}
+  .blk.on .mark{background:var(--now);border-color:var(--now);color:#12200f}
+
+  .load{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .pill{background:var(--card);border-radius:11px;padding:9px 13px;font-size:13px;
+    font-weight:700;display:flex;align-items:center;gap:7px}
+  .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+  .pill .n{color:var(--dim);font-weight:600}
+
+  .note{font-size:12px;color:var(--faint);margin-top:14px;line-height:1.65}
+  footer{padding:24px 20px 0;font-size:12px;color:var(--faint);text-align:center;line-height:1.7}
+  footer a{color:var(--dim)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="datewrap">
+    <span class="date" id="date">—</span>
+    <span class="dow" id="dow"></span>
+    <span class="clock" id="clock">--:--</span>
+  </div>
+  <div class="meta"><span id="summary"></span></div>
+  <div class="tabs" id="tabs"></div>
+</header>
+
+<section>
+  <div id="hero"></div>
+
+  <h2>🗓️ 타임라인 <span class="count" id="c-blk"></span></h2>
+  <div id="timeline"></div>
+
+  <h2>📚 오늘 과목 배정</h2>
+  <div class="load" id="load"></div>
+
+  <div class="note" id="hint"></div>
+</section>
+
+<footer>
+  체크는 이 기기에만 저장되고 매일 자정에 초기화됩니다.<br>
+  출처 <b>04_CAL/시간표/주간 루틴.md</b> (8/7 이후 정착 기준) · 읽기 전용<br>
+  <a href="./index.html">→ FFF 대시보드</a>
+</footer>
+
+<script>
+const DOW = ['일','월','화','수','목','금','토'];
+const KIND = {
+  '수학':{c:'var(--math)',n:'수학'}, '국어':{c:'var(--kor)',n:'국어'},
+  '과학':{c:'var(--sci)',n:'과학'},  '영어':{c:'var(--eng)',n:'영어'},
+  'proj':{c:'var(--proj)',n:'프로젝트'}, 'life':{c:'var(--life)',n:'생활'},
+  'open':{c:'var(--today)',n:'데일리 오픈'}, 'org':{c:'var(--org)',n:'정리'},
+  'sleep':{c:'var(--sleep)',n:'수면'}, 'free':{c:'var(--etc)',n:'자유'}
+};
+const DEEP = '90분 × 2 · 사이 10분 휴식';
+
+const WAKE = {s:'08:00',e:'08:40',t:'기상 루틴',d:'세면 · 아침 · 기상 10분 안에 밖의 빛 보기',k:'life'};
+const OPEN = {s:'08:40',e:'09:00',t:'데일리 오픈',d:'FFF 열고 오늘 처리할 항목 3개 확정',k:'open'};
+const LUNCH= {s:'12:00',e:'13:00',t:'점심 · 완전 휴식',d:'폰 허용 구간',k:'life'};
+const DLN  = {s:'23:30',e:'24:00',t:'DLN 작성',d:'00_DLN/오늘날짜.md',k:'org'};
+const BED  = {s:'24:30',e:'24:30',t:'취침',d:'23:30 이후 폰·모니터 끄기',k:'sleep',pt:1};
+
+const ROUTINE = {
+'월':{blocks:[
+  WAKE, OPEN,
+  {s:'09:00',e:'12:00',t:'딥워크 1',d:'수학 — 쎈B 25문제',k:'수학',sub:DEEP},
+  LUNCH,
+  {s:'13:00',e:'16:00',t:'딥워크 2',d:'과학 — PSH 일일학습 2개',k:'과학',sub:DEEP},
+  {s:'16:00',e:'17:00',t:'저녁 · 이동 준비',d:'',k:'life'},
+  {s:'17:00',e:'22:00',t:'학원 — 수학',d:'1oo1oo',k:'수학',cls:1},
+  {s:'22:30',e:'23:30',t:'정리 블록',d:'수업 → 001_raw 기록 → 01_KWL 정리',k:'org'},
+  DLN, BED]},
+
+'화':{blocks:[
+  WAKE, OPEN,
+  {s:'09:00',e:'12:00',t:'딥워크 1',d:'과학 — PSH 일일학습 3개 (마감 당일)',k:'과학',sub:DEEP},
+  LUNCH,
+  {s:'13:00',e:'16:00',t:'딥워크 2',d:'수학 — 쎈B 25문제',k:'수학',sub:DEEP},
+  {s:'16:00',e:'17:30',t:'저녁 · 이동 준비',d:'',k:'life'},
+  {s:'18:00',e:'21:30',t:'학원 — 과학',d:'PSH',k:'과학',cls:1},
+  {s:'22:00',e:'23:30',t:'정리 블록',d:'수업 → 001_raw 기록 → 01_KWL 정리',k:'org'},
+  DLN, BED]},
+
+'수':{blocks:[
+  WAKE, OPEN,
+  {s:'09:00',e:'12:00',t:'딥워크 1',d:'국어 — GJ 본교재 + 미모',k:'국어',sub:DEEP},
+  LUNCH,
+  {s:'13:00',e:'16:00',t:'딥워크 2',d:'수학 — 프린트 15문제',k:'수학',sub:DEEP},
+  {s:'16:00',e:'18:30',t:'저녁 · 보충 · 이동 준비',d:'',k:'life'},
+  {s:'19:00',e:'22:00',t:'학원 — 국어 클리닉',d:'GJ',k:'국어',cls:1},
+  {s:'22:30',e:'23:30',t:'정리 블록',d:'클리닉 오답 정리',k:'org'},
+  DLN, BED]},
+
+'목':{blocks:[
+  WAKE, OPEN,
+  {s:'09:00',e:'12:00',t:'딥워크 1',d:'수학 — 쎈B 30문제 + 프린트 마무리',k:'수학',sub:DEEP},
+  LUNCH,
+  {s:'13:00',e:'16:00',t:'🛠 프로젝트',d:'3시간 · 무엇을 할지는 지난 일요일에 확정된 것',k:'proj'},
+  {s:'16:00',e:'17:00',t:'저녁',d:'',k:'life'},
+  {s:'17:00',e:'22:30',t:'공강 — 자유 / 밀린 것 보충',d:'유일한 온전한 자기 시간',k:'free'},
+  {s:'22:30',e:'23:30',t:'프로젝트 로그 + 주중 점검',d:'',k:'org'},
+  DLN, BED]},
+
+'금':{blocks:[
+  WAKE, OPEN,
+  {s:'09:00',e:'12:00',t:'딥워크 1',d:'수학 — 전체 점검 · 틀린 문제 재풀이',k:'수학',sub:DEEP},
+  LUNCH,
+  {s:'13:00',e:'16:00',t:'딥워크 2',d:'영어 — JCH 단어 31 · 32',k:'영어',sub:DEEP},
+  {s:'16:00',e:'17:00',t:'저녁 · 이동 준비',d:'',k:'life'},
+  {s:'17:00',e:'22:00',t:'학원 — 수학',d:'1oo1oo',k:'수학',cls:1},
+  {s:'22:30',e:'23:30',t:'정리 블록',d:'수업 → 001_raw 기록 → 01_KWL 정리',k:'org'},
+  DLN, BED]},
+
+'토':{blocks:[
+  WAKE, OPEN,
+  {s:'09:00',e:'12:00',t:'딥워크 1',d:'영어 — 워크시트 + 인강 (마감 당일)',k:'영어',sub:DEEP},
+  LUNCH,
+  {s:'13:00',e:'16:00',t:'딥워크 2',d:'국어 — 실모 대비 / 약점 보강',k:'국어',sub:DEEP},
+  {s:'16:00',e:'17:30',t:'저녁 · 이동 준비',d:'',k:'life'},
+  {s:'18:00',e:'21:30',t:'학원 — 영어',d:'JCH',k:'영어',cls:1},
+  {s:'22:00',e:'22:40',t:'정리 블록',d:'수업 → 001_raw 기록 → 01_KWL 정리',k:'org'},
+  {s:'22:40',e:'23:00',t:'DLN 작성',d:'00_DLN/오늘날짜.md',k:'org'},
+  {s:'23:00',e:'23:00',t:'취침 (조기)',d:'일요일 08:30 수업 대비',k:'sleep',pt:1}]},
+
+'일':{blocks:[
+  {s:'06:50',e:'07:30',t:'기상 루틴',d:'수업일 조기 기상 · 빛 보기',k:'life'},
+  {s:'07:30',e:'08:30',t:'이동 · 준비',d:'',k:'life'},
+  {s:'08:30',e:'09:50',t:'학원 — 국어 실모',d:'GJ',k:'국어',cls:1},
+  {s:'10:00',e:'13:00',t:'학원 — 국어 본수업',d:'GJ',k:'국어',cls:1},
+  {s:'13:00',e:'14:30',t:'점심 · 귀가 · 낮잠 30분',d:'',k:'life'},
+  {s:'14:30',e:'17:30',t:'실모 오답 정리',d:'국어 — 실모 + 본수업 오답',k:'국어'},
+  {s:'17:30',e:'18:00',t:'저녁',d:'',k:'life'},
+  {s:'18:00',e:'18:20',t:'주간 리뷰 + 다음주 FFF 세팅',d:'20분 · 절대 생략 금지',k:'open'},
+  {s:'18:20',e:'23:30',t:'자유 / 다음주 준비 보충',d:'',k:'free'},
+  DLN, BED]}
+};
+
+const REVIEW = ['03_FFF 다음 주차 DB 생성 → 학원 숙제 등록 (마감일 + 태그)',
+  '지난주 미완료 항목 → 왜 못 했는지 한 줄 DLN에 기록',
+  '이번 주 완료율 계산 (완료 / 전체)',
+  '다음 주 목요일 프로젝트 3시간에 무엇을 할지 확정',
+  '취침·기상 실제 기록과 목표 비교'];
+
+const $ = id => document.getElementById(id);
+const pad = n => String(n).padStart(2,'0');
+const ymd = d => d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const mins = hm => { const [h,m] = hm.split(':').map(Number); return h*60+m; };
+const hhmm = m => pad(Math.floor((m%1440)/60))+':'+pad(m%60);
+const col = k => (KIND[k]||KIND.free).c;
+const esc = s => String(s).replace(/[&<>"']/g, c =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+// 새벽 04:00 이전은 전날의 연장으로 본다
+function nowMin(d){ const m = d.getHours()*60+d.getMinutes(); return m < 240 ? m+1440 : m; }
+function todayDow(d){ return DOW[(d.getHours() < 4 ? (d.getDay()+6)%7 : d.getDay())]; }
+
+// ---- 로컬 체크 ----
+const KEY = 'routine-checked';
+function loadChecks(){
+  try{
+    const raw = JSON.parse(localStorage.getItem(KEY) || '{}');
+    if (raw.date !== ymd(new Date())) return {};
+    return raw.items || {};
+  }catch(e){ return {}; }
+}
+function saveChecks(i){
+  try{ localStorage.setItem(KEY, JSON.stringify({date:ymd(new Date()), items:i})); }catch(e){}
+}
+let checks = loadChecks();
+let view = null;   // 보고 있는 요일 (null = 오늘)
+
+// ---- 렌더 ----
+function renderTabs(today){
+  $('tabs').innerHTML = ['월','화','수','목','금','토','일'].map(d => {
+    const c = ['tab'];
+    if (d === (view || today)) c.push('sel');
+    if (d === today) c.push('td');
+    return '<div class="'+c.join(' ')+'" data-d="'+d+'">'+d+'</div>';
+  }).join('');
+  $('tabs').querySelectorAll('.tab').forEach(el => {
+    el.addEventListener('click', () => {
+      view = (el.dataset.d === today) ? null : el.dataset.d;
+      render();
+    });
+  });
+}
+
+function renderHero(day, live, now){
+  const box = $('hero');
+  if (!live){
+    box.innerHTML = '<div class="hero off"><div class="lbl">미리보기</div>'
+      + '<div class="ttl">'+day+'요일 루틴</div>'
+      + '<div class="sub">오늘이 아닌 요일을 보고 있습니다. 요일 탭에서 오늘로 돌아갈 수 있습니다.</div></div>';
+    return;
+  }
+  const n = nowMin(now);
+  const bs = ROUTINE[day].blocks;
+  const cur = bs.find(b => !b.pt && n >= mins(b.s) && n < mins(b.e));
+  const nxt = bs.find(b => mins(b.s) > n);
+  if (!cur){
+    const t = nxt ? nxt.t+' · '+nxt.s+' 시작' : '오늘 블록 종료';
+    const gap = nxt ? (mins(nxt.s) - n) : 0;
+    box.innerHTML = '<div class="hero off"><div class="lbl">블록 사이</div>'
+      + '<div class="ttl">'+esc(t)+'</div>'
+      + (nxt ? '<div class="sub">'+esc(nxt.d || '')+'</div>'
+        + '<div class="rem"><span>'+Math.floor(gap/60)+'시간 '+(gap%60)+'분 뒤</span>'
+        + '<span>'+esc(nxt.s)+'</span></div>' : '') + '</div>';
+    return;
+  }
+  const st = mins(cur.s), en = mins(cur.e);
+  const pct = Math.round((n-st)/(en-st)*100);
+  const rem = en - n;
+  box.innerHTML = '<div class="hero"><div class="lbl">지금 · '+esc(cur.s)+'–'+esc(cur.e)+'</div>'
+    + '<div class="ttl">'+esc(cur.t)+'</div>'
+    + (cur.d ? '<div class="sub">'+esc(cur.d)+'</div>' : '')
+    + '<div class="bar"><div class="fill" style="width:'+pct+'%"></div></div>'
+    + '<div class="rem"><span>'+pct+'% 경과</span><span>남은 시간 '
+    + (rem >= 60 ? Math.floor(rem/60)+'시간 ' : '') + (rem%60) + '분</span></div></div>';
+}
+
+function renderTimeline(day, live, now){
+  const n = nowMin(now);
+  const bs = ROUTINE[day].blocks;
+  $('c-blk').textContent = bs.length + '개';
+  $('timeline').innerHTML = bs.map((b,i) => {
+    const st = mins(b.s), en = mins(b.e);
+    const cur  = live && !b.pt && n >= st && n < en;
+    const past = live && n >= en && !b.pt;
+    const key  = day+'|'+b.s+'|'+b.t;
+    const on   = checks[key] ? ' on' : '';
+    const cls  = ['blk', cur?'now':'', past?'past':'', on.trim()].filter(Boolean).join(' ');
+    const rail = b.pt ? b.s : b.s+'<br>'+b.e;
+    return '<div class="row"><div class="rail">'+rail+'</div>'
+      + '<div class="'+cls+'" style="border-left-color:'+col(b.k)+'" data-k="'+esc(key)+'">'
+      + '<div class="bt"><span class="mark">✔</span>'+esc(b.t)
+      + (cur ? '<span class="chip">진행 중</span>'
+             : b.cls ? '<span class="chip gray">학원</span>' : '')
+      + '</div>'
+      + (b.d ? '<div class="bd">'+esc(b.d)+'</div>' : '')
+      + (b.sub ? '<div class="bs">'+esc(b.sub)+'</div>' : '')
+      + '</div></div>';
+  }).join('');
+  $('timeline').querySelectorAll('.blk').forEach(el => {
+    el.addEventListener('click', () => {
+      const k = el.dataset.k;
+      checks[k] = !checks[k];
+      if (!checks[k]) delete checks[k];
+      el.classList.toggle('on');
+      saveChecks(checks);
+    });
+  });
+}
+
+function renderLoad(day){
+  const agg = {};
+  ROUTINE[day].blocks.forEach(b => {
+    if (!KIND[b.k] || ['life','open','org','sleep','free'].includes(b.k)) return;
+    const h = (mins(b.e) - mins(b.s)) / 60;
+    if (h <= 0) return;
+    agg[b.k] = (agg[b.k] || 0) + h;
+  });
+  const keys = Object.keys(agg);
+  $('load').innerHTML = keys.length ? keys.map(k =>
+    '<div class="pill"><span class="dot" style="background:'+col(k)+'"></span>'
+    + esc(KIND[k].n) + ' <span class="n">' + (agg[k] % 1 ? agg[k].toFixed(1) : agg[k]) + 'h</span></div>'
+  ).join('') : '<div class="pill"><span class="n">배정된 과목 없음</span></div>';
+}
+
+function renderHint(day){
+  if (day === '일'){
+    $('hint').innerHTML = '<b>18:00 주간 리뷰 20분 — 절대 생략 금지</b><br>'
+      + REVIEW.map((r,i) => (i+1)+'. '+esc(r)).join('<br>');
+  } else if (day === '목'){
+    $('hint').innerHTML = '목요일은 유일한 공강. 수학 최대 진도 + 프로젝트를 여기 몰아 배치했습니다.';
+  } else {
+    $('hint').innerHTML = '1주차는 이 중 <b>70%만</b> 채웁니다. '
+      + '집중이 안 되면 25분 타이머만 켜고 시작 — 25분 후 그만둬도 성공 처리.';
+  }
+}
+
+function renderSummary(day, live){
+  const bs = ROUTINE[day].blocks;
+  const deep = bs.filter(b => /딥워크|오답 정리|프로젝트/.test(b.t))
+                 .reduce((a,b) => a + (mins(b.e)-mins(b.s))/60, 0);
+  const cl = bs.filter(b => b.cls).reduce((a,b) => a + (mins(b.e)-mins(b.s))/60, 0);
+  const done = bs.filter(b => checks[day+'|'+b.s+'|'+b.t]).length;
+  const p = [];
+  p.push('자습 '+(deep%1?deep.toFixed(1):deep)+'h');
+  p.push(cl ? '학원 '+(cl%1?cl.toFixed(1):cl)+'h' : '공강');
+  if (live) p.push('완료 '+done+'/'+bs.length);
+  $('summary').textContent = p.join('  ·  ');
+}
+
+function tick(){
+  const d = new Date();
+  $('clock').textContent = pad(d.getHours())+':'+pad(d.getMinutes());
+}
+
+function render(){
+  const now = new Date();
+  const today = todayDow(now);
+  const day = view || today;
+  const live = (day === today);
+  $('date').textContent = (now.getMonth()+1)+'월 '+now.getDate()+'일';
+  $('dow').textContent = day+'요일'+(live ? '' : ' (미리보기)');
+  tick();
+  renderTabs(today);
+  renderHero(day, live, now);
+  renderTimeline(day, live, now);
+  renderLoad(day);
+  renderHint(day);
+  renderSummary(day, live);
+}
+
+let lastDay = new Date().getDate();
+setInterval(() => {
+  const d = new Date().getDate();
+  if (d !== lastDay){ lastDay = d; checks = {}; saveChecks(checks); }
+  render();
+}, 30000);
+
+document.addEventListener('visibilitychange', () => { if (!document.hidden) render(); });
+
+render();
+</script>
+</body>
+</html>
