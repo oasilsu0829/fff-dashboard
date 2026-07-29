@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1c1c20">
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" href="./icon.svg">
+<title>FFF 대시보드</title>
+<style>
+  :root{
+    --bg:#1c1c20; --bar:#26262c; --card:#2a2a31; --line:#35353d;
+    --txt:#e4e4ea; --dim:#96969f; --faint:#6a6a74;
+    --math:#e5484d; --kor:#f78c32; --sci:#ffc53d; --eng:#5abe6e; --etc:#8f8f9a;
+    --now:#5abe6e; --late:#ff5a5a; --today:#ffaa3c;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--txt);
+    font-family:'Pretendard','Malgun Gothic','Apple SD Gothic Neo',system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased}
+  body{padding:0 0 48px;max-width:900px;margin:0 auto}
+
+  header{position:sticky;top:0;z-index:10;background:var(--bar);
+    padding:18px 20px 14px;border-bottom:1px solid var(--line);
+    padding-top:calc(18px + env(safe-area-inset-top))}
+  .datewrap{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+  .date{font-size:28px;font-weight:800;letter-spacing:-.5px}
+  .dow{font-size:20px;font-weight:700;color:var(--kor)}
+  .clock{margin-left:auto;font-size:22px;font-weight:700;color:var(--dim);
+    font-variant-numeric:tabular-nums}
+  .meta{margin-top:8px;font-size:13px;color:var(--dim);display:flex;gap:14px;flex-wrap:wrap}
+  .stale{color:var(--late);font-weight:600}
+
+  section{padding:0 20px}
+  h2{font-size:15px;font-weight:700;color:var(--dim);margin:26px 0 10px;
+    display:flex;align-items:center;gap:8px;text-transform:none}
+  h2 .count{font-size:13px;color:var(--faint);font-weight:600}
+
+  .card{background:var(--card);border-radius:14px;padding:14px 16px;margin-bottom:9px;
+    border-left:4px solid var(--line);display:flex;align-items:center;gap:14px}
+  .card.now{border-left-color:var(--now);background:#243026}
+  .card.past{opacity:.42}
+  .time{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;
+    min-width:112px;color:var(--dim)}
+  .card.now .time{color:var(--now)}
+  .sub{font-size:17px;font-weight:700}
+  .who{font-size:13px;color:var(--dim);margin-top:2px}
+  .badge{margin-left:auto;font-size:12px;font-weight:700;padding:4px 10px;
+    border-radius:999px;background:var(--now);color:#12200f;white-space:nowrap}
+
+  .grp{margin:18px 0 8px;font-size:14px;font-weight:800;display:flex;align-items:center;gap:8px}
+  .dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+
+  .task{background:var(--card);border-radius:12px;padding:13px 15px;margin-bottom:7px;
+    display:flex;align-items:center;gap:13px;cursor:pointer;user-select:none;
+    transition:opacity .15s}
+  .task .box{width:22px;height:22px;border-radius:7px;border:2px solid var(--faint);
+    flex:0 0 auto;display:grid;place-items:center;font-size:14px;color:transparent}
+  .task.on{opacity:.4}
+  .task.on .box{background:var(--now);border-color:var(--now);color:#12200f}
+  .task.on .ttl{text-decoration:line-through}
+  .ttl{font-size:15.5px;font-weight:600;line-height:1.35}
+  .dday{margin-left:auto;font-size:12.5px;font-weight:700;white-space:nowrap;color:var(--faint);
+    font-variant-numeric:tabular-nums}
+  .dday.late{color:var(--late)}
+  .dday.today{color:var(--today)}
+
+  .empty{color:var(--faint);font-size:14.5px;padding:10px 2px}
+  .note{font-size:12px;color:var(--faint);margin-top:10px;line-height:1.6}
+  footer{padding:26px 20px 0;font-size:12px;color:var(--faint);text-align:center;line-height:1.7}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="datewrap">
+    <span class="date" id="date">—</span>
+    <span class="dow" id="dow"></span>
+    <span class="clock" id="clock">--:--</span>
+  </div>
+  <div class="meta">
+    <span id="summary"></span>
+    <span id="freshness"></span>
+  </div>
+</header>
+
+<section>
+  <h2>📅 오늘 수업 <span class="count" id="c-class"></span></h2>
+  <div id="classes"></div>
+
+  <h2>🔥 FFF 미완료 <span class="count" id="c-fff"></span></h2>
+  <div id="fff"></div>
+
+  <h2>⚡ 다가오는 일정 <span class="count" id="c-evt"></span></h2>
+  <div id="events"></div>
+
+  <div class="note">
+    체크는 <b>이 기기에만</b> 저장됩니다. 실제 완료 처리는 PC의 리마인더에서 하세요.
+  </div>
+</section>
+
+<footer id="footer"></footer>
+
+<script>
+const DATA = {"generated":"2026-07-30T02:01:33","schedule":[{"day":"월","start":"17:00","end":"22:00","subject":"수학","teacher":"1oo1oo","place":""},{"day":"화","start":"18:00","end":"21:30","subject":"과학","teacher":"PSH","place":""},{"day":"수","start":"19:00","end":"22:00","subject":"국어 클리닉","teacher":"GJ","place":""},{"day":"금","start":"17:00","end":"22:00","subject":"수학","teacher":"1oo1oo","place":""},{"day":"토","start":"18:00","end":"21:30","subject":"영어","teacher":"JCH","place":""},{"day":"일","start":"08:30","end":"09:50","subject":"국어 실모","teacher":"GJ","place":""},{"day":"일","start":"10:00","end":"13:00","subject":"국어 본수업","teacher":"GJ","place":""}],"fff":[{"text":"1oo1oo 원의 방정식 프린트 (30여 문제)","tag":"수학","due":"2026-07-31"},{"text":"1oo1oo 원의 방정식 쎈B (100여 문제)","tag":"수학","due":"2026-07-31"},{"text":"GJ 본교재1","tag":"국어","due":"2026-07-30"},{"text":"GJ 본교재2","tag":"국어","due":"2026-07-30"},{"text":"GJ 본교재3","tag":"국어","due":"2026-07-30"},{"text":"GJ 미모1","tag":"국어","due":"2026-07-30"},{"text":"GJ 미모3","tag":"국어","due":"2026-07-30"},{"text":"GJ 실모오답","tag":"국어","due":"2026-07-30"},{"text":"GJ 3주차 과제","tag":"국어","due":"2026-07-31"},{"text":"PSH 2주차 일일학습1","tag":"과학","due":"2026-08-02"},{"text":"PSH 2주차 일일학습2","tag":"과학","due":"2026-08-02"},{"text":"PSH 2주차 일일학습3","tag":"과학","due":"2026-08-02"},{"text":"PSH 2주차 일일학습4","tag":"과학","due":"2026-08-02"},{"text":"PSH 2주차 일일학습5","tag":"과학","due":"2026-08-02"},{"text":"JCH 단어31","tag":"영어","due":"2026-08-01"},{"text":"JCH 단어32","tag":"영어","due":"2026-08-01"},{"text":"JCH 워크시트1","tag":"영어","due":"2026-08-01"},{"text":"JCH 워크시트2","tag":"영어","due":"2026-08-01"},{"text":"JCH 인강","tag":"영어","due":"2026-08-01"}],"events":[]};
+
+const DOW = ['일','월','화','수','목','금','토'];
+const COLORS = { '수학':'var(--math)', '국어':'var(--kor)', '과학':'var(--sci)', '영어':'var(--eng)' };
+const ORDER  = { '수학':1, '국어':2, '과학':3, '영어':4 };
+
+const $ = id => document.getElementById(id);
+const pad = n => String(n).padStart(2,'0');
+const ymd = d => d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const mins = hm => { const [h,m] = hm.split(':').map(Number); return h*60+m; };
+const color = tag => COLORS[tag] || 'var(--etc)';
+
+// 자정 기준 날짜 차이 (시분초 영향 제거)
+function dayDiff(isoDate, today){
+  const [y,m,d] = isoDate.split('-').map(Number);
+  const a = new Date(y, m-1, d);
+  const b = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  return Math.round((a - b) / 86400000);
+}
+
+function ddayLabel(diff){
+  if (diff < 0)  return { text: Math.abs(diff)+'일 지남', cls:'late' };
+  if (diff === 0) return { text: '오늘 마감', cls:'today' };
+  if (diff === 1) return { text: '내일', cls:'today' };
+  return { text: 'D-'+diff, cls:'' };
+}
+
+// ---- 로컬 체크 (기기 전용, 날짜가 바뀌면 자동 초기화) ----
+const KEY = 'fff-checked';
+function loadChecks(){
+  try{
+    const raw = JSON.parse(localStorage.getItem(KEY) || '{}');
+    if (raw.date !== ymd(new Date())) return {};
+    return raw.items || {};
+  }catch(e){ return {}; }
+}
+function saveChecks(items){
+  try{
+    localStorage.setItem(KEY, JSON.stringify({ date: ymd(new Date()), items }));
+  }catch(e){}
+}
+let checks = loadChecks();
+
+// ---- 렌더 ----
+function renderClasses(now){
+  const box = $('classes');
+  const dow = DOW[now.getDay()];
+  const list = DATA.schedule.filter(s => s.day === dow)
+                            .sort((a,b) => mins(a.start) - mins(b.start));
+  $('c-class').textContent = list.length ? list.length+'개' : '';
+  if (!list.length){
+    box.innerHTML = '<div class="empty">오늘 잡힌 수업이 없습니다.</div>';
+    return 0;
+  }
+  const nowM = now.getHours()*60 + now.getMinutes();
+  box.innerHTML = list.map(s => {
+    const st = mins(s.start), en = mins(s.end);
+    const live = nowM >= st && nowM <= en;
+    const past = nowM > en;
+    const who = [s.teacher, s.place].filter(Boolean).join(' · ');
+    return '<div class="card'+(live?' now':past?' past':'')+'">'
+      + '<div class="time">'+s.start+' – '+s.end+'</div>'
+      + '<div><div class="sub">'+esc(s.subject)+'</div>'
+      + (who ? '<div class="who">'+esc(who)+'</div>' : '') + '</div>'
+      + (live ? '<div class="badge">진행 중</div>' : '')
+      + '</div>';
+  }).join('');
+  return list.length;
+}
+
+function renderFFF(now){
+  const box = $('fff');
+  const items = DATA.fff.slice().sort((a,b) => {
+    const oa = ORDER[a.tag] || 99, ob = ORDER[b.tag] || 99;
+    if (oa !== ob) return oa - ob;
+    return (a.due || '9999') < (b.due || '9999') ? -1 : 1;
+  });
+  $('c-fff').textContent = items.length ? items.length+'개' : '';
+  if (!items.length){
+    box.innerHTML = '<div class="empty">✅ 남은 항목이 없습니다. 오늘도 수고했어요.</div>';
+    return 0;
+  }
+  let html = '', cur = null;
+  items.forEach((it, i) => {
+    if (it.tag !== cur){
+      cur = it.tag;
+      const n = items.filter(x => x.tag === cur).length;
+      html += '<div class="grp" style="color:'+color(cur)+'">'
+            + '<span class="dot" style="background:'+color(cur)+'"></span>'
+            + esc(cur)+' <span class="count">'+n+'</span></div>';
+    }
+    let dd = '';
+    if (it.due){
+      const l = ddayLabel(dayDiff(it.due, now));
+      dd = '<span class="dday '+l.cls+'">'+l.text+'</span>';
+    }
+    const key = it.tag+'|'+it.text+'|'+(it.due||'');
+    const on = checks[key] ? ' on' : '';
+    html += '<div class="task'+on+'" data-k="'+esc(key)+'">'
+          + '<div class="box">✔</div><div class="ttl">'+esc(it.text)+'</div>'+dd+'</div>';
+  });
+  box.innerHTML = html;
+  box.querySelectorAll('.task').forEach(el => {
+    el.addEventListener('click', () => {
+      const k = el.dataset.k;
+      checks[k] = !checks[k];
+      if (!checks[k]) delete checks[k];
+      el.classList.toggle('on');
+      saveChecks(checks);
+    });
+  });
+  const dueSoon = items.filter(x => x.due && dayDiff(x.due, now) <= 0).length;
+  return dueSoon;
+}
+
+function renderEvents(now){
+  const box = $('events');
+  const list = DATA.events
+    .map(e => Object.assign({}, e, { diff: dayDiff(e.date, now) }))
+    .filter(e => e.diff >= 0 && e.diff <= 14)
+    .sort((a,b) => a.diff - b.diff);
+  $('c-evt').textContent = list.length ? list.length+'개' : '';
+  if (!list.length){
+    box.innerHTML = '<div class="empty">14일 이내 예정된 시험·이벤트가 없습니다.</div>';
+    return;
+  }
+  box.innerHTML = list.map(e => {
+    const l = ddayLabel(e.diff);
+    const when = e.date.slice(5).replace('-','/') + (e.time ? '  '+e.time : '');
+    return '<div class="card"><div class="time">'+when+'</div>'
+      + '<div><div class="sub">'+esc(e.text)+'</div></div>'
+      + '<span class="dday '+l.cls+'">'+l.text+'</span></div>';
+  }).join('');
+}
+
+function esc(s){
+  return String(s).replace(/[&<>"']/g, c =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function renderFreshness(now){
+  const g = new Date(DATA.generated.replace(' ','T'));
+  const hrs = (now - g) / 3600000;
+  const el = $('freshness');
+  let label;
+  if (hrs < 1)  label = '방금 갱신';
+  else if (hrs < 24) label = Math.floor(hrs)+'시간 전 갱신';
+  else label = Math.floor(hrs/24)+'일 전 갱신';
+  el.textContent = '데이터 ' + label;
+  el.className = hrs > 36 ? 'stale' : '';
+  $('footer').innerHTML = 'PC에서 <b>Build-Web.ps1</b> 을 실행하면 갱신됩니다.<br>'
+    + '마지막 빌드 ' + esc(DATA.generated.replace('T',' ')) + ' · 읽기 전용';
+}
+
+function tick(){
+  const now = new Date();
+  $('clock').textContent = pad(now.getHours())+':'+pad(now.getMinutes());
+}
+
+function render(){
+  const now = new Date();
+  $('date').textContent = (now.getMonth()+1)+'월 '+now.getDate()+'일';
+  $('dow').textContent = DOW[now.getDay()]+'요일';
+  tick();
+  const nClass = renderClasses(now);
+  const nDue = renderFFF(now);
+  renderEvents(now);
+  renderFreshness(now);
+  const parts = [];
+  parts.push('수업 '+nClass+'개');
+  parts.push('FFF '+DATA.fff.length+'개 남음');
+  if (nDue > 0) parts.push('오늘까지 '+nDue+'개');
+  $('summary').textContent = parts.join('  ·  ');
+}
+
+// 날짜가 바뀌면 자동으로 다시 그린다 (자정 넘겨 켜둔 경우)
+let lastDay = new Date().getDate();
+setInterval(() => {
+  tick();
+  const d = new Date().getDate();
+  if (d !== lastDay){ lastDay = d; checks = {}; saveChecks(checks); }
+  render();
+}, 60000);
+
+// 화면 복귀 시 즉시 갱신 (= 잠금 해제 후 앱 열었을 때)
+document.addEventListener('visibilitychange', () => { if (!document.hidden) render(); });
+
+render();
+
+if ('serviceWorker' in navigator){
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
