@@ -10,7 +10,7 @@
   :root{
     --bg:#1c1c20; --bar:#26262c; --card:#2a2a31; --line:#35353d;
     --txt:#e4e4ea; --dim:#96969f; --faint:#6a6a74;
-    --math:#e5484d; --kor:#f78c32; --sci:#ffc53d; --eng:#5abe6e;
+    --school:#5a7fb8; --baekin:#e5484d; --parksh:#ffc53d; --jungch:#5abe6e; --korday:#f78c32;
     --proj:#a78bfa; --life:#7c8fa8; --org:#6fb3c9; --sleep:#8f8f9a; --etc:#8f8f9a;
     --now:#5abe6e; --late:#ff5a5a; --today:#ffaa3c;
   }
@@ -25,7 +25,7 @@
     padding-top:calc(16px + env(safe-area-inset-top))}
   .datewrap{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
   .date{font-size:26px;font-weight:800;letter-spacing:-.5px}
-  .dow{font-size:19px;font-weight:700;color:var(--kor)}
+  .dow{font-size:19px;font-weight:700;color:var(--kor,var(--korday));}
   .clock{margin-left:auto;font-size:21px;font-weight:700;color:var(--dim);
     font-variant-numeric:tabular-nums}
   .meta{margin-top:7px;font-size:12.5px;color:var(--dim);display:flex;gap:13px;flex-wrap:wrap}
@@ -104,124 +104,136 @@
   <h2>🗓️ 타임라인 <span class="count" id="c-blk"></span></h2>
   <div id="timeline"></div>
 
-  <h2>📚 오늘 과목 배정</h2>
+  <h2>📊 오늘 시간 배분</h2>
   <div class="load" id="load"></div>
 
   <div class="note" id="hint"></div>
 </section>
 
 <footer>
-  출처 <b>04_CAL/시간표/주간 루틴.md</b> (8/7 이후 정착 기준) · 읽기 전용<br>
+  2학기 등교 루틴 (2026-08-18 반영) · 읽기 전용<br>
   <a href="./index.html">→ FFF 대시보드</a>
 </footer>
 
 <script>
 const DOW = ['일','월','화','수','목','금','토'];
 const KIND = {
-  '수학':{c:'var(--math)',n:'수학'}, '국어':{c:'var(--kor)',n:'국어'},
-  '과학':{c:'var(--sci)',n:'과학'},  '영어':{c:'var(--eng)',n:'영어'},
-  'proj':{c:'var(--proj)',n:'프로젝트'}, 'life':{c:'var(--life)',n:'생활'},
-  'open':{c:'var(--today)',n:'데일리 오픈'}, 'org':{c:'var(--org)',n:'정리'},
-  'sleep':{c:'var(--sleep)',n:'수면'}, 'free':{c:'var(--etc)',n:'자유'}
+  'school':{c:'var(--school)',n:'학교'},
+  'baekin':{c:'var(--baekin)',n:'백인대장'},
+  'parksh':{c:'var(--parksh)',n:'박상현 내신반'},
+  'jungch':{c:'var(--jungch)',n:'정찬홍 내신반'},
+  'korday':{c:'var(--korday)',n:'국어하기 좋은날'},
+  'proj':{c:'var(--proj)',n:'프로젝트'},
+  'life':{c:'var(--life)',n:'생활'},
+  'open':{c:'var(--today)',n:'데일리 오픈'},
+  'org':{c:'var(--org)',n:'정리'},
+  'sleep':{c:'var(--sleep)',n:'수면'},
+  'free':{c:'var(--etc)',n:'자유'}
 };
-const DEEP = '90분 × 2 · 사이 10분 휴식';
 
-// 기상 10:00 고정 (전환표 폐기, 현재 자연 리듬 02:00 취침 / 10:00 기상 유지).
-// 자습 블록은 전부 +2h. 학원 시각은 외부 고정이라 그대로 두고,
-// 학원 직전 블록만 시작 30분 전에서 잘라낸다 (손실 시간은 로드 표시에 그대로 드러남).
-const WAKE = {s:'10:00',e:'10:40',t:'기상 루틴',d:'세면 · 아침 · 기상 10분 안에 밖의 빛 보기',k:'life'};
-const OPEN = {s:'10:40',e:'11:00',t:'데일리 오픈',d:'FFF 열고 오늘 처리할 항목 3개 확정',k:'open'};
-const LUNCH= {s:'14:00',e:'15:00',t:'점심 · 완전 휴식',d:'폰 허용 구간',k:'life'};
-const DLN  = {s:'23:30',e:'24:00',t:'DLN 작성',d:'00_DLN/오늘날짜.md',k:'org'};
-const BED  = {s:'26:00',e:'26:00',t:'취침',d:'취침 1시간 전(01:00부터) 폰·모니터 끄기',k:'sleep',pt:1};
+// 2학기 등교 시작 (2026-08-18 반영). 기상 06:50 고정 — 07:50 등교 대비.
+// 학원 4곳: 백인대장(월·금 정규 + 목 클리닉), 국어하기 좋은날(일 본수업 + 수 클리닉),
+// 박상현 내신반(화), 정찬홍 내신반(토). 프로젝트 시간은 학원이 짧게 끝나는
+// 수·목요일 저녁 + 학교가 일찍 끝나는 금요일 오후 + 학교 없는 토요일 오전에 배치.
+const WAKE_WD = {s:'06:50',e:'07:50',t:'기상 · 등교',d:'세면 · 아침 · 이동 (60분)',k:'life'};
+const WAKE_WE = {s:'08:30',e:'09:00',t:'기상 루틴',d:'주말이라 여유 있게',k:'life'};
+const DLN_WD  = {s:'22:30',e:'23:00',t:'DLN 작성',d:'00_DLN/오늘날짜.md',k:'org'};
+const BED_WD  = {s:'23:00',e:'23:00',t:'취침',d:'내일 06:50 기상 · 취침 1시간 전 화면 종료',k:'sleep',pt:1};
+const BED_LATE= {s:'23:30',e:'23:30',t:'취침',d:'다음날 등교 없음 · 30분 여유',k:'sleep',pt:1};
 
 const ROUTINE = {
 '월':{blocks:[
-  WAKE, OPEN,
-  {s:'11:00',e:'14:00',t:'딥워크 1',d:'수학 — 쎈B 25문제',k:'수학',sub:DEEP},
-  LUNCH,
-  {s:'15:00',e:'16:30',t:'딥워크 2',d:'과학 — PSH 일일학습 2개 · 학원 직전이라 90분만',k:'과학'},
-  {s:'16:30',e:'17:00',t:'저녁 · 이동 준비',d:'',k:'life'},
-  {s:'17:00',e:'22:00',t:'학원 — 수학',d:'1oo1oo',k:'수학',cls:1},
-  {s:'22:30',e:'23:30',t:'정리 블록',d:'수업 → 001_raw 기록 → 01_KWL 정리',k:'org'},
-  DLN, BED]},
+  WAKE_WD,
+  {s:'07:50',e:'16:00',t:'학교',d:'7교시',k:'school',school:1},
+  {s:'16:00',e:'17:30',t:'하교 후 자습',d:'학교·학원 숙제 확인 및 정리',k:'life'},
+  {s:'17:30',e:'18:00',t:'저녁 · 이동 준비',d:'',k:'life'},
+  {s:'18:00',e:'22:00',t:'학원 — 백인대장',d:'',k:'baekin',cls:1},
+  {s:'22:00',e:'22:30',t:'귀가 · 정리',d:'',k:'org'},
+  DLN_WD, BED_WD]},
 
 '화':{blocks:[
-  WAKE, OPEN,
-  {s:'11:00',e:'14:00',t:'딥워크 1',d:'과학 — PSH 일일학습 3개 (마감 당일)',k:'과학',sub:DEEP},
-  LUNCH,
-  {s:'15:00',e:'17:30',t:'딥워크 2',d:'수학 — 쎈B 25문제',k:'수학'},
+  WAKE_WD,
+  {s:'07:50',e:'16:00',t:'학교',d:'7교시',k:'school',school:1},
+  {s:'16:00',e:'17:30',t:'하교 후 자습',d:'학교·학원 숙제 확인 및 정리',k:'life'},
   {s:'17:30',e:'18:00',t:'저녁 · 이동 준비',d:'',k:'life'},
-  {s:'18:00',e:'21:30',t:'학원 — 과학',d:'PSH',k:'과학',cls:1},
-  {s:'22:00',e:'23:30',t:'정리 블록',d:'수업 → 001_raw 기록 → 01_KWL 정리',k:'org'},
-  DLN, BED]},
+  {s:'18:00',e:'21:30',t:'학원 — 박상현 내신반',d:'',k:'parksh',cls:1},
+  {s:'21:30',e:'22:00',t:'귀가 · 정리',d:'',k:'org'},
+  {s:'22:00',e:'22:30',t:'DLN 작성',d:'00_DLN/오늘날짜.md',k:'org'},
+  BED_WD]},
 
 '수':{blocks:[
-  WAKE, OPEN,
-  {s:'11:00',e:'14:00',t:'딥워크 1',d:'국어 — GJ 본교재 + 미모',k:'국어',sub:DEEP},
-  LUNCH,
-  {s:'15:00',e:'18:00',t:'딥워크 2',d:'수학 — 프린트 15문제',k:'수학',sub:DEEP},
-  {s:'18:00',e:'19:00',t:'저녁 · 이동 준비',d:'',k:'life'},
-  {s:'19:00',e:'22:00',t:'학원 — 국어 클리닉',d:'GJ',k:'국어',cls:1},
-  {s:'22:30',e:'23:30',t:'정리 블록',d:'클리닉 오답 정리',k:'org'},
-  DLN, BED]},
+  WAKE_WD,
+  {s:'07:50',e:'16:00',t:'학교',d:'7교시',k:'school',school:1},
+  {s:'16:00',e:'17:30',t:'하교 후 자습',d:'학교·학원 숙제 확인 및 정리',k:'life'},
+  {s:'17:30',e:'18:00',t:'저녁 · 이동 준비',d:'',k:'life'},
+  {s:'18:00',e:'20:00',t:'국어 클리닉',d:'국어하기 좋은날',k:'korday',cls:1},
+  {s:'20:00',e:'20:30',t:'귀가 · 정리',d:'',k:'org'},
+  {s:'20:30',e:'22:00',t:'🛠 프로젝트',d:'클리닉이 짧아 생기는 여유 90분 · 활성 프로젝트 1개만',k:'proj'},
+  DLN_WD, BED_WD]},
 
 '목':{blocks:[
-  WAKE, OPEN,
-  {s:'11:00',e:'14:00',t:'딥워크 1',d:'수학 — 쎈B 30문제 + 프린트 마무리',k:'수학',sub:DEEP},
-  LUNCH,
-  {s:'15:00',e:'18:00',t:'🛠 프로젝트',d:'3시간 · 무엇을 할지는 지난 일요일에 확정된 것',k:'proj'},
-  {s:'18:00',e:'19:00',t:'저녁',d:'',k:'life'},
-  {s:'19:00',e:'24:30',t:'공강 — 자유 / 밀린 것 보충',d:'유일한 온전한 자기 시간',k:'free'},
-  {s:'24:30',e:'25:30',t:'프로젝트 로그 + 주중 점검',d:'',k:'org'},
-  {s:'25:30',e:'26:00',t:'DLN 작성',d:'00_DLN/오늘날짜.md',k:'org'},
-  BED]},
+  WAKE_WD,
+  {s:'07:50',e:'16:00',t:'학교',d:'7교시',k:'school',school:1},
+  {s:'16:00',e:'17:30',t:'하교 후 자습',d:'학교·학원 숙제 확인 및 정리',k:'life'},
+  {s:'17:30',e:'18:00',t:'저녁 · 이동 준비',d:'',k:'life'},
+  {s:'18:00',e:'20:00',t:'백인대장 클리닉',d:'',k:'baekin',cls:1},
+  {s:'20:00',e:'20:30',t:'귀가 · 정리',d:'',k:'org'},
+  {s:'20:30',e:'22:00',t:'🛠 프로젝트',d:'클리닉이 짧아 생기는 여유 90분 · 활성 프로젝트 1개만',k:'proj'},
+  DLN_WD, BED_WD]},
 
 '금':{blocks:[
-  WAKE, OPEN,
-  {s:'11:00',e:'14:00',t:'딥워크 1',d:'수학 — 전체 점검 · 틀린 문제 재풀이',k:'수학',sub:DEEP},
-  LUNCH,
-  {s:'15:00',e:'16:30',t:'딥워크 2',d:'영어 — JCH 단어 31 · 32 · 학원 직전이라 90분만',k:'영어'},
-  {s:'16:30',e:'17:00',t:'저녁 · 이동 준비',d:'',k:'life'},
-  {s:'17:00',e:'22:00',t:'학원 — 수학',d:'1oo1oo',k:'수학',cls:1},
-  {s:'22:30',e:'23:30',t:'정리 블록',d:'수업 → 001_raw 기록 → 01_KWL 정리',k:'org'},
-  DLN, BED]},
+  WAKE_WD,
+  {s:'07:50',e:'15:00',t:'학교',d:'6교시 · 다른 요일보다 1시간 일찍 하교',k:'school',school:1},
+  {s:'15:00',e:'15:30',t:'하교 · 이동',d:'',k:'life'},
+  {s:'15:30',e:'17:30',t:'🛠 프로젝트',d:'평일 중 가장 큰 자유 블록 (2h)',k:'proj'},
+  {s:'17:30',e:'18:00',t:'저녁 · 이동 준비',d:'',k:'life'},
+  {s:'18:00',e:'22:00',t:'학원 — 백인대장',d:'',k:'baekin',cls:1},
+  {s:'22:00',e:'22:30',t:'귀가 · 정리',d:'',k:'org'},
+  {s:'22:30',e:'23:00',t:'DLN 작성',d:'00_DLN/오늘날짜.md',k:'org'},
+  BED_LATE]},
 
 '토':{blocks:[
-  WAKE, OPEN,
-  {s:'11:00',e:'14:00',t:'딥워크 1',d:'영어 — 워크시트 + 인강 (마감 당일)',k:'영어',sub:DEEP},
-  LUNCH,
-  {s:'15:00',e:'17:30',t:'딥워크 2',d:'국어 — 실모 대비 / 약점 보강',k:'국어'},
+  WAKE_WE,
+  {s:'09:00',e:'12:00',t:'🛠 프로젝트',d:'학교 없는 유일한 평일 오전 — 메인 프로젝트 블록 (3h)',k:'proj'},
+  {s:'12:00',e:'13:00',t:'점심 · 휴식',d:'',k:'life'},
+  {s:'13:00',e:'17:30',t:'밀린 숙제 / 복습',d:'자유 시간',k:'free'},
   {s:'17:30',e:'18:00',t:'저녁 · 이동 준비',d:'',k:'life'},
-  {s:'18:00',e:'21:30',t:'학원 — 영어',d:'JCH',k:'영어',cls:1},
-  {s:'22:00',e:'22:40',t:'정리 블록',d:'수업 → 001_raw 기록 → 01_KWL 정리',k:'org'},
-  {s:'22:40',e:'23:00',t:'DLN 작성',d:'00_DLN/오늘날짜.md',k:'org'},
-  {s:'23:00',e:'23:00',t:'취침 (조기)',d:'일요일 08:30 수업 대비 — 기상 시간과 무관하게 유지',k:'sleep',pt:1}]},
+  {s:'18:00',e:'21:30',t:'학원 — 정찬홍 내신반',d:'',k:'jungch',cls:1},
+  {s:'21:30',e:'22:00',t:'귀가 · 정리',d:'',k:'org'},
+  {s:'22:00',e:'22:30',t:'DLN 작성',d:'00_DLN/오늘날짜.md',k:'org'},
+  BED_LATE]},
 
 '일':{blocks:[
-  {s:'06:50',e:'07:30',t:'기상 루틴',d:'⚠️ 08:30 수업 때문에 조기 기상 · 10시 기상 규칙의 유일한 예외',k:'life'},
-  {s:'07:30',e:'08:30',t:'이동 · 준비',d:'',k:'life'},
-  {s:'08:30',e:'09:50',t:'학원 — 국어 실모',d:'GJ',k:'국어',cls:1},
-  {s:'10:00',e:'13:00',t:'학원 — 국어 본수업',d:'GJ',k:'국어',cls:1},
-  {s:'13:00',e:'14:30',t:'점심 · 귀가 · 낮잠 30분',d:'',k:'life'},
-  {s:'14:30',e:'17:30',t:'실모 오답 정리',d:'국어 — 실모 + 본수업 오답',k:'국어'},
-  {s:'17:30',e:'18:00',t:'저녁',d:'',k:'life'},
-  {s:'18:00',e:'18:20',t:'주간 리뷰 + 다음주 FFF 세팅',d:'20분 · 절대 생략 금지',k:'open'},
-  {s:'18:20',e:'23:30',t:'자유 / 다음주 준비 보충',d:'',k:'free'},
-  DLN, BED]}
+  WAKE_WE,
+  {s:'09:00',e:'12:30',t:'자습 / 밀린 것 정리',d:'',k:'free'},
+  {s:'12:30',e:'13:00',t:'점심 · 이동 준비',d:'',k:'life'},
+  {s:'13:00',e:'16:00',t:'국어하기 좋은날',d:'본수업',k:'korday',cls:1},
+  {s:'16:00',e:'16:30',t:'귀가',d:'',k:'life'},
+  {s:'16:30',e:'16:50',t:'주간 리뷰 + 다음주 FFF 세팅',d:'20분 · 절대 생략 금지',k:'open'},
+  {s:'16:50',e:'22:30',t:'자유 / 프로젝트 마무리 / 다음주 준비',d:'',k:'free'},
+  DLN_WD, BED_WD]}
 };
 
 const REVIEW = ['03_FFF 다음 주차 DB 생성 → 학원 숙제 등록 (마감일 + 태그)',
   '지난주 미완료 항목 → 왜 못 했는지 한 줄 DLN에 기록',
   '이번 주 완료율 계산 (완료 / 전체)',
-  '다음 주 목요일 프로젝트 3시간에 무엇을 할지 확정',
+  '수·목·금·토 프로젝트 블록에 무엇을 할지 확정 — 한 번에 하나만 활성화',
   '취침·기상 실제 기록과 목표 비교'];
+
+// 시험 기간
+const EXAM_S = new Date(2026,9,12), EXAM_E = new Date(2026,9,16); // 10/12~10/16
+function examStatus(now){
+  const t = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const ds = Math.round((EXAM_S - t) / 86400000);
+  const de = Math.round((EXAM_E - t) / 86400000);
+  if (de < 0) return '';
+  if (ds <= 0) return '시험 기간 ' + (Math.round((t - EXAM_S) / 86400000) + 1) + '일차';
+  return '시험 D-' + ds;
+}
 
 const $ = id => document.getElementById(id);
 const pad = n => String(n).padStart(2,'0');
-const ymd = d => d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
 const mins = hm => { const [h,m] = hm.split(':').map(Number); return h*60+m; };
-const hhmm = m => pad(Math.floor((m%1440)/60))+':'+pad(m%60);
 const col = k => (KIND[k]||KIND.free).c;
 const esc = s => String(s).replace(/[&<>"']/g, c =>
   ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -295,7 +307,8 @@ function renderTimeline(day, live, now){
       + '<div class="'+cls+'" style="border-left-color:'+col(b.k)+'">'
       + '<div class="bt">'+esc(b.t)
       + (cur ? '<span class="chip">진행 중</span>'
-             : b.cls ? '<span class="chip gray">학원</span>' : '')
+             : b.school ? '<span class="chip gray">학교</span>'
+             : b.cls ? '<span class="chip gray">'+esc(KIND[b.k].n)+'</span>' : '')
       + '</div>'
       + (b.d ? '<div class="bd">'+esc(b.d)+'</div>' : '')
       + (b.sub ? '<div class="bs">'+esc(b.sub)+'</div>' : '')
@@ -315,29 +328,37 @@ function renderLoad(day){
   $('load').innerHTML = keys.length ? keys.map(k =>
     '<div class="pill"><span class="dot" style="background:'+col(k)+'"></span>'
     + esc(KIND[k].n) + ' <span class="n">' + (agg[k] % 1 ? agg[k].toFixed(1) : agg[k]) + 'h</span></div>'
-  ).join('') : '<div class="pill"><span class="n">배정된 과목 없음</span></div>';
+  ).join('') : '<div class="pill"><span class="n">배정된 항목 없음</span></div>';
 }
 
 function renderHint(day){
   if (day === '일'){
-    $('hint').innerHTML = '<b>18:00 주간 리뷰 20분 — 절대 생략 금지</b><br>'
+    $('hint').innerHTML = '<b>16:30 주간 리뷰 20분 — 절대 생략 금지</b><br>'
       + REVIEW.map((r,i) => (i+1)+'. '+esc(r)).join('<br>');
-  } else if (day === '목'){
-    $('hint').innerHTML = '목요일은 유일한 공강. 수학 최대 진도 + 프로젝트를 여기 몰아 배치했습니다.';
+  } else if (day === '수' || day === '목'){
+    $('hint').innerHTML = '클리닉이 20:00에 끝나 저녁에 90분 여유가 생깁니다. 이 시간엔 활성 프로젝트 1개만 진행하세요 (COX-1/2 모델, 일반화학→생화학 연계, 써모싸이클러 중 하나).';
+  } else if (day === '금'){
+    $('hint').innerHTML = '6교시라 15:00 하교 — 평일 중 가장 큰 프로젝트 블록(2h)이 여기 있습니다.';
+  } else if (day === '토'){
+    $('hint').innerHTML = '학교 없는 유일한 평일 오전. 프로젝트 3시간을 여기 몰아 배치했습니다.';
   } else {
-    $('hint').innerHTML = '1주차는 이 중 <b>70%만</b> 채웁니다. '
-      + '집중이 안 되면 25분 타이머만 켜고 시작 — 25분 후 그만둬도 성공 처리.';
+    $('hint').innerHTML = '하교 후 자습 시간에 그날 숙제부터 확인하세요. 밀리면 주말로 넘어갑니다.';
   }
 }
 
-function renderSummary(day, live){
+function renderSummary(day, live, now){
   const bs = ROUTINE[day].blocks;
-  const deep = bs.filter(b => /딥워크|오답 정리|프로젝트/.test(b.t))
-                 .reduce((a,b) => a + (mins(b.e)-mins(b.s))/60, 0);
-  const cl = bs.filter(b => b.cls).reduce((a,b) => a + (mins(b.e)-mins(b.s))/60, 0);
+  const sum = k => bs.filter(k).reduce((a,b) => a + (mins(b.e)-mins(b.s))/60, 0);
+  const schoolH = sum(b => b.school);
+  const acadH   = sum(b => b.cls);
+  const projH   = sum(b => b.k === 'proj');
+  const fmt = h => (h % 1 ? h.toFixed(1) : h) + 'h';
   const p = [];
-  p.push('자습 '+(deep%1?deep.toFixed(1):deep)+'h');
-  p.push(cl ? '학원 '+(cl%1?cl.toFixed(1):cl)+'h' : '공강');
+  if (schoolH) p.push('학교 '+fmt(schoolH));
+  if (acadH)   p.push('학원 '+fmt(acadH));
+  if (projH)   p.push('프로젝트 '+fmt(projH));
+  const ex = examStatus(now);
+  if (ex) p.push(ex);
   $('summary').textContent = p.join('  ·  ');
 }
 
@@ -359,7 +380,7 @@ function render(){
   renderTimeline(day, live, now);
   renderLoad(day);
   renderHint(day);
-  renderSummary(day, live);
+  renderSummary(day, live, now);
 }
 
 setInterval(render, 30000);
